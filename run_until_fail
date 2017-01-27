@@ -1,0 +1,26 @@
+#!/bin/bash
+
+if (($# < 1)); then
+    echo "Run number not provided"
+    exit 1
+elif (($# < 2));then
+    echo "Command not provided"
+    exit 1
+fi
+
+n=$1
+shift
+for ((i = 0;i < n;i++)); do
+    echo "Running $i"
+    "$@"
+    ret=$?
+    if ((ret)); then
+        mail -s "Run $i in $TMUX exit with $ret" yyc1992@gmail.com <<EOF
+Command: $*
+EOF
+        return $ret
+    fi
+done
+mail -s "All run in $TMUX finished successfully" yyc1992@gmail.com <<EOF
+Command: $*
+EOF

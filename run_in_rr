@@ -1,0 +1,28 @@
+#!/bin/bash
+
+dir=$(dirname "$(realpath "${BASH_SOURCE}")")
+
+run_until_fail=$dir/run_until_fail
+
+if (($# < 1)); then
+    echo "RR output dir not provided"
+    exit 1
+fi
+rrdir=$1
+shift
+
+if (($# < 1)); then
+    echo "Run number not provided"
+    exit 1
+fi
+n=$1
+shift
+
+if (($# < 1));then
+    echo "Command not provided"
+    exit 1
+fi
+
+export _RR_TRACE_DIR="$rrdir"
+
+$run_until_fail "$n" rr record -h --ignore-nested "$@"
