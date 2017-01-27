@@ -5,24 +5,30 @@ dir=$(dirname "$(realpath "${BASH_SOURCE}")")
 run_until_fail=$dir/run_until_fail
 
 if (($# < 1)); then
-    echo "RR output dir not provided"
+    echo "RR output dir not provided" >&2
     exit 1
 fi
-rrdir=$1
+rrdir=$(realpath "$1")
 shift
 
 if (($# < 1)); then
-    echo "Run number not provided"
+    echo "Run number not provided" >&2
     exit 1
 fi
 n=$1
 shift
 
 if (($# < 1));then
-    echo "Command not provided"
+    echo "Command not provided" >&2
     exit 1
 fi
 
 export _RR_TRACE_DIR="$rrdir"
+if ! [[ -d $rrdir ]]; then
+    mkdir -p "$rrdir" || {
+        echo "mkdir failed" >&2
+        exit 1
+    }
+fi
 
 $run_until_fail "$n" rr record -h --ignore-nested "$@"
