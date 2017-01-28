@@ -31,4 +31,10 @@ if ! [[ -d $rrdir ]]; then
     }
 fi
 
-$run_until_fail "$n" rr record -h --ignore-nested "$@"
+if [[ -n $GC_TEST_BIND_CPU ]]; then
+    bind_cpu_arg=(--bind-to-cpu $GC_TEST_BIND_CPU)
+else
+    bind_cpu_arg=()
+fi
+
+$run_until_fail "$n" rr record "${bind_cpu_arg[@]}" -h --ignore-nested "$@"
