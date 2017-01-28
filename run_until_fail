@@ -18,7 +18,7 @@ for ((i = 0;i < n;i++)); do
         mail -s "Run $i in $TMUX exit with $ret" yyc1992@gmail.com <<EOF
 Command: $*
 EOF
-        return $ret
+        exit $ret
     fi
 done
 mail -s "All run in $TMUX finished successfully" yyc1992@gmail.com <<EOF
