@@ -8,6 +8,12 @@ if (($# < 1)); then
     echo "RR output dir not provided" >&2
     exit 1
 fi
+if ! [[ -d $1 ]]; then
+    mkdir -p "$1" || {
+        echo "mkdir failed" >&2
+        exit 1
+    }
+fi
 rrdir=$(realpath "$1")
 shift
 
@@ -24,12 +30,6 @@ if (($# < 1));then
 fi
 
 export _RR_TRACE_DIR="$rrdir"
-if ! [[ -d $rrdir ]]; then
-    mkdir -p "$rrdir" || {
-        echo "mkdir failed" >&2
-        exit 1
-    }
-fi
 
 if [[ -n $GC_TEST_BIND_CPU ]]; then
     bind_cpu_arg=(--bind-to-cpu $GC_TEST_BIND_CPU)
