@@ -37,4 +37,10 @@ else
     bind_cpu_arg=()
 fi
 
-$run_until_fail "$n" rr record "${bind_cpu_arg[@]}" -h --ignore-nested "$@"
+if [[ -n $GC_TEST_CHAOS ]]; then
+    chaos_arg=(-h)
+else
+    chaos_arg=()
+fi
+
+$run_until_fail "$n" rr record "${chaos_arg[@]}" "${bind_cpu_arg[@]}" --ignore-nested "$@"
