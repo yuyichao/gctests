@@ -15,4 +15,4 @@ else
     chaos_arg=()
 fi
 
-exec rr record "${chaos_arg[@]}" "${bind_cpu_arg[@]}" --ignore-nested "$@"
+exec rr -S record "${chaos_arg[@]}" "${bind_cpu_arg[@]}" --ignore-nested "$@"
