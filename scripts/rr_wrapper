@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Run a command in rr
+# Setting chaos mode and cpu binding from environment variables
+
+if [[ -n $GC_TEST_BIND_CPU ]]; then
+    bind_cpu_arg=(--bind-to-cpu $GC_TEST_BIND_CPU)
+else
+    bind_cpu_arg=()
+fi
+
+if [[ -n $GC_TEST_CHAOS ]]; then
+    chaos_arg=(-h)
+else
+    chaos_arg=()
+fi
+
+exec rr record "${chaos_arg[@]}" "${bind_cpu_arg[@]}" --ignore-nested "$@"

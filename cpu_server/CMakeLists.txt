@@ -5,3 +5,5 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(cpu_server main.cpp)
 target_link_libraries(cpu_server rt pthread)
+
+install(TARGETS cpu_server DESTINATION ${CMAKE_INSTALL_BINDIR})
