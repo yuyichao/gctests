@@ -11,3 +11,4 @@ set(CMAKE_CXX_FLAGS "-std=gnu++11 -pthread -g -O3 ${CMAKE_CXX_FLAGS}")
 add_definitions("-D_GNU_SOURCE")
 
 add_subdirectory(cpu_server)
+add_subdirectory(cpu_client)
