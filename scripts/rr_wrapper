@@ -15,4 +15,8 @@ else
     chaos_arg=()
 fi
 
+if [[ -n $_RR_TRACE_DIR ]]; then
+    mkdir -p "$_RR_TRACE_DIR"
+fi
+
 exec rr -S record "${chaos_arg[@]}" "${bind_cpu_arg[@]}" --ignore-nested "$@"
