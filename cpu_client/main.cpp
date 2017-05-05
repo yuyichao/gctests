@@ -51,7 +51,7 @@ static void main_loop(const char *name)
 
 int main(int argc, char *argv[])
 {
-    if (argc <= 3) {
+    if (argc < 3) {
         fprintf(stderr, "Wrong number of arguments: Usage: cpu_client socketpath command...\n");
         exit(1);
     }
