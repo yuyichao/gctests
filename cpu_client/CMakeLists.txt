@@ -17,3 +17,4 @@ function(add_client_alias name)
 endfunction()
 
 add_client_alias(schedule_rr)
+add_client_alias(rr_wrapper)

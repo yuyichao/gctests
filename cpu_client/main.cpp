@@ -12,16 +12,17 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/stat.h>
 
 #include <vector>
 #include <iostream>
 #include <sstream>
 
-static bool check_env(const char *name)
+static char *check_env(const char *name)
 {
     if (auto val = getenv(name))
-        return val[0] != 0;
-    return false;
+        return *val ? val : nullptr;
+    return nullptr;
 }
 
 __attribute__((noreturn)) static void checked_execvp(char *const *argv)
@@ -29,6 +30,40 @@ __attribute__((noreturn)) static void checked_execvp(char *const *argv)
     execvp(argv[0], argv);
     perror("execvp");
     exit(1);
+}
+
+static void mkdir_recursive(const char *dir)
+{
+    std::string buff(dir);
+    while (buff.back() == '/')
+        buff.pop_back();
+    for (auto &c: buff) {
+        if (c == '/') {
+            c = 0;
+            mkdir(buff.c_str(), S_IRWXU);
+            c = '/';
+        }
+    }
+    mkdir(buff.c_str(), S_IRWXU);
+}
+
+static bool check_command(const char *arg, const char *cmd)
+{
+    auto larg = strlen(arg);
+    auto lcmd = strlen(cmd);
+    if (larg == lcmd)
+        return memcmp(arg, cmd, lcmd) == 0;
+    if (larg < lcmd)
+        return false;
+    return arg[larg - lcmd - 1] == '/' && memcmp(cmd, &arg[larg - lcmd], lcmd)  == 0;
+}
+
+template<typename T>
+static void append_tail_args(T &args, int argc, char **argv)
+{
+    for (int i = 0; i < argc; i++)
+        args.push_back(argv[i]);
+    args.push_back(nullptr);
 }
 
 static void exec_if_rr(char *const *argv)
@@ -76,6 +111,42 @@ static void put_cpu_binding_env(int cpu)
     putenv(buff);
 }
 
+template<typename T>
+static void add_cpu_binding_rr_arg(T &args, const char *v)
+{
+    if (v && *v) {
+        args.push_back((char*)"--bind-to-cpu");
+        args.push_back((char*)v);
+    }
+}
+
+template<typename T>
+static void add_cpu_binding_rr_arg(T &args, int num)
+{
+    char *str;
+    if (asprintf(&str, "%d", num) < 0) {
+        fprintf(stderr, "asprintf failed\n");
+        exit(1);
+    }
+    add_cpu_binding_rr_arg(args, str);
+}
+
+template<typename T>
+static void add_chaos_rr_arg(T &args)
+{
+    if (check_env("GC_TEST_CHAOS")) {
+        args.push_back((char*)"-h");
+    }
+}
+
+static void ensure_rr_dir(void)
+{
+    if (auto rr_dir = check_env("_RR_TRACE_DIR")) {
+        mkdir_recursive(rr_dir);
+    }
+}
+
+// Main entries
 __attribute__((noreturn)) static void cpu_client(int argc, char *argv[])
 {
     if (argc < 2) {
@@ -98,9 +169,23 @@ __attribute__((noreturn)) static void schedule_rr(int argc, char **argv)
     argc -= 1;
     exec_if_rr(argv);
     std::vector<char*> new_argv{(char*)"cpu_client", path, (char*)"rr_wrapper"};
-    for (int i = 0; i < argc; i++)
-        new_argv.push_back(argv[i]);
-    new_argv.push_back(nullptr);
+    append_tail_args(new_argv, argc, argv);
+    checked_execvp(&new_argv[0]);
+}
+
+__attribute__((noreturn)) static void rr_wrapper(int argc, char **argv)
+{
+    if (argc < 1) {
+        fprintf(stderr, "Too few arguments for rr_wrapper\n");
+        exit(1);
+    }
+    exec_if_rr(argv);
+    std::vector<char*> new_argv{(char*)"rr", (char*)"-S", (char*)"record",
+            (char*)"--ignore-nested"};
+    add_chaos_rr_arg(new_argv);
+    add_cpu_binding_rr_arg(new_argv, getenv("GC_TEST_BIND_CPU"));
+    append_tail_args(new_argv, argc, argv);
+    ensure_rr_dir();
     checked_execvp(&new_argv[0]);
 }
 
@@ -109,8 +194,11 @@ int main(int argc, char *argv[])
     auto self = argv[0];
     argc--;
     argv++;
-    if (strcmp(self, "schedule_rr") == 0) {
+    if (check_command(self, "schedule_rr")) {
         schedule_rr(argc, argv);
+    }
+    else if (check_command(self, "rr_wrapper")) {
+        rr_wrapper(argc, argv);
     }
     else {
         cpu_client(argc, argv);
