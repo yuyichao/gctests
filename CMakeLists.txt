@@ -21,4 +21,5 @@ endfunction()
 
 add_subdirectory(cpu_server)
 add_subdirectory(cpu_client)
+add_subdirectory(tools)
 add_subdirectory(scripts)
