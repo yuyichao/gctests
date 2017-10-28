@@ -199,6 +199,23 @@ int main(int argc, char *argv[])
     auto self = argv[0];
     argc--;
     argv++;
+
+    // Skip all arguments starting with `=` and use them to set envs
+    // Treat a single `=` as the separator between envs and other arguments.
+    while (argc > 0) {
+        auto arg = *argv;
+        if (*arg != '=')
+            break;
+        argc--;
+        argv++;
+        if (arg[1]) {
+            putenv(&arg[1]);
+        }
+        else {
+            break;
+        }
+    }
+
     if (check_command(self, "schedule_rr")) {
         schedule_rr(argc, argv);
     }
