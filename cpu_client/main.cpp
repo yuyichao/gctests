@@ -18,6 +18,7 @@
 #include <iostream>
 #include <sstream>
 
+// Generic helper functions
 static char *check_env(const char *name)
 {
     if (auto val = getenv(name))
@@ -66,6 +67,7 @@ static void append_tail_args(T &args, int argc, char **argv)
     args.push_back(nullptr);
 }
 
+// RR/GC test specific helper functions
 static void exec_if_rr(char *const *argv)
 {
     if (check_env("RUNNING_UNDER_RR")) {
@@ -146,6 +148,19 @@ static void ensure_rr_dir(void)
     }
 }
 
+template<typename F>
+__attribute__((noreturn)) static void run_rr(int argc, char **argv, F &&cpu_binding)
+{
+    exec_if_rr(argv);
+    std::vector<char*> new_argv{(char*)"rr", (char*)"-S", (char*)"record",
+            (char*)"--ignore-nested"};
+    add_chaos_rr_arg(new_argv);
+    add_cpu_binding_rr_arg(new_argv, cpu_binding());
+    append_tail_args(new_argv, argc, argv);
+    ensure_rr_dir();
+    checked_execvp(&new_argv[0]);
+}
+
 // Main entries
 __attribute__((noreturn)) static void cpu_client(int argc, char *argv[])
 {
@@ -167,10 +182,7 @@ __attribute__((noreturn)) static void schedule_rr(int argc, char **argv)
     auto path = argv[0];
     argv += 1;
     argc -= 1;
-    exec_if_rr(argv);
-    std::vector<char*> new_argv{(char*)"cpu_client", path, (char*)"rr_wrapper"};
-    append_tail_args(new_argv, argc, argv);
-    checked_execvp(&new_argv[0]);
+    run_rr(argc, argv, [=] { return get_cpu_binding(path); });
 }
 
 __attribute__((noreturn)) static void rr_wrapper(int argc, char **argv)
@@ -179,14 +191,7 @@ __attribute__((noreturn)) static void rr_wrapper(int argc, char **argv)
         fprintf(stderr, "Too few arguments for rr_wrapper\n");
         exit(1);
     }
-    exec_if_rr(argv);
-    std::vector<char*> new_argv{(char*)"rr", (char*)"-S", (char*)"record",
-            (char*)"--ignore-nested"};
-    add_chaos_rr_arg(new_argv);
-    add_cpu_binding_rr_arg(new_argv, getenv("GC_TEST_BIND_CPU"));
-    append_tail_args(new_argv, argc, argv);
-    ensure_rr_dir();
-    checked_execvp(&new_argv[0]);
+    run_rr(argc, argv, [] { return getenv("GC_TEST_BIND_CPU"); });
 }
 
 int main(int argc, char *argv[])
