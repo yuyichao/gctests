@@ -17,6 +17,27 @@
 #include <iostream>
 #include <sstream>
 
+static bool check_env(const char *name)
+{
+    if (auto val = getenv(name))
+        return val[0] != 0;
+    return false;
+}
+
+__attribute__((noreturn)) static void checked_execvp(char *const *argv)
+{
+    execvp(argv[0], argv);
+    perror("execvp");
+    exit(1);
+}
+
+static void exec_if_rr(char *const *argv)
+{
+    if (check_env("RUNNING_UNDER_RR")) {
+        checked_execvp(argv);
+    }
+}
+
 static int get_cpu_binding(const char *name)
 {
     // Do not close this socket, this is used for keeping track of the process from the server.
@@ -55,17 +76,43 @@ static void put_cpu_binding_env(int cpu)
     putenv(buff);
 }
 
-static int cpu_client(int argc, char *argv[])
+__attribute__((noreturn)) static void cpu_client(int argc, char *argv[])
 {
     if (argc < 2) {
         fprintf(stderr, "Wrong number of arguments: Usage: cpu_client socketpath command...\n");
         exit(1);
     }
+    exec_if_rr(&argv[1]);
     put_cpu_binding_env(get_cpu_binding(argv[0]));
-    return execvp(argv[1], &argv[1]);
+    checked_execvp(&argv[1]);
+}
+
+__attribute__((noreturn)) static void schedule_rr(int argc, char **argv)
+{
+    if (argc < 2) {
+        fprintf(stderr, "Too few arguments for schedule_rr\n");
+        exit(1);
+    }
+    auto path = argv[0];
+    argv += 1;
+    argc -= 1;
+    exec_if_rr(argv);
+    std::vector<char*> new_argv{(char*)"cpu_client", path, (char*)"rr_wrapper"};
+    for (int i = 0; i < argc; i++)
+        new_argv.push_back(argv[i]);
+    new_argv.push_back(nullptr);
+    checked_execvp(&new_argv[0]);
 }
 
 int main(int argc, char *argv[])
 {
-    return cpu_client(argc - 1, argv + 1);
+    auto self = argv[0];
+    argc--;
+    argv++;
+    if (strcmp(self, "schedule_rr") == 0) {
+        schedule_rr(argc, argv);
+    }
+    else {
+        cpu_client(argc, argv);
+    }
 }
